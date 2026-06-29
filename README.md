@@ -1,25 +1,26 @@
-# AppADay 053 · Decision Coin
+# AppADay 053 · The Decider
 
 **Category:** P — Productivity & Life  
-**Live URL:** https://augustineiacopelli.github.io/appaday-053-decision-coin/  
+**Live URL:** https://augustineiacopelli.github.io/appaday-053-the-decider/  
 **Portfolio:** https://augustineiacopelli.github.io/appaday/
 
 ---
 
 ## What It Does
 
-Decision Coin takes two options you name and flips a coin to pick one. Enter your two choices, tap the coin (or the button), and watch it spin to a result. Every flip is logged in a running history so you can see how the coin has decided across your session. Clear the history whenever you want a fresh slate.
-
-No accounts, no storage, no setup — just a fair coin and a clean answer.
+The Decider is a weighted spinning wheel for making decisions with any number of options at any odds you choose. Name your options, assign each one a percentage, and spin. The wheel only unlocks when your odds add up to exactly 100% — a live warning tells you how far off you are until then. Every spin is logged in a session history showing each winner and the odds it carried.
 
 ---
 
 ## Features
 
-- Named options — label both sides with real text so the result means something
-- Animated coin flip with a physically correct final face (heads or tails)
-- Session history showing every flip with both options and the winner
-- Works entirely in the browser, no data leaves the device
+- Unlimited options, each with a user-set percentage
+- Live odds total with a warning bar when percentages don't add up to 100%
+- Spin button locked until total equals exactly 100%
+- Canvas spinning wheel — lands physically on the winning segment
+- Color-coded segments with auto-truncating labels
+- Actual odds column that tracks real-world win rate per option, updating after every spin and resetting with history
+- Session history with winner color and odds at time of spin
 
 ---
 
