@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Decider &middot; AppADay 053</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --gold:    #C9A84C;
+    --gold-lt: #E8C97A;
+    --dark:    #1A1612;
+    --ink:     #2C2416;
+    --muted:   #7A6E5F;
+    --cream:   #F5EFE4;
+    --border:  #3A2E1E;
+    --red:     #C0392B;
+    --warn:    #D97A3A;
+    --radius:  12px;
+  }
+
+  body {
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    background: var(--dark);
+    color: var(--cream);
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 16px 60px;
+  }
+
+  header {
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 28px;
+  }
+
+  .app-id {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .portfolio-link {
+    font-size: 11px;
+    color: var(--gold);
+    text-decoration: none;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+  }
+  .portfolio-link:hover { text-decoration: underline; }
+
+  main {
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+  }
+
+  h1 {
+    font-size: clamp(1.8rem, 7vw, 2.6rem);
+    font-weight: 900;
+    color: var(--gold);
+    text-align: center;
+    letter-spacing: -0.02em;
+  }
+
+  /* WHEEL */
+  .wheel-wrap {
+    position: relative;
+    width: min(320px, 88vw);
+    height: min(320px, 88vw);
+    flex-shrink: 0;
+  }
+
+  #wheelCanvas {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: block;
+  }
+
+  .wheel-pointer {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-top: 24px solid var(--gold);
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+    z-index: 10;
+  }
+
+  .spin-btn {
+    position: absolute;
+    inset: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+    background: var(--gold);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    z-index: 11;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, transform 0.1s;
+    color: var(--dark);
+  }
+  .spin-btn:hover:not(:disabled) { background: var(--gold-lt); }
+  .spin-btn:active:not(:disabled) { transform: translate(-50%, -50%) scale(0.92); }
+  .spin-btn:disabled { opacity: 0.35; cursor: not-allowed; background: var(--muted); }
+
+  /* WARNING BAR */
+  .warn-bar {
+    width: 100%;
+    background: rgba(217,122,58,0.15);
+    border: 1px solid var(--warn);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--warn);
+    text-align: center;
+    display: none;
+  }
+  .warn-bar.visible { display: block; }
+  .warn-bar strong { font-weight: 700; }
+
+  /* RESULT */
+  .result-box {
+    width: 100%;
+    background: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    text-align: center;
+    min-height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.3s;
+  }
+  .result-box.has-result { border-color: var(--gold); }
+
+  .result-label { font-size: 11px; color: var(--muted); letter-spacing: 0.05em; margin-bottom: 5px; }
+  .result-winner {
+    font-size: clamp(1.2rem, 4vw, 1.7rem);
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .result-empty { font-size: 14px; color: var(--muted); font-style: italic; }
+
+  /* OPTIONS */
+  .section-row {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .section-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .total-badge {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    transition: background 0.2s, color 0.2s;
+  }
+  .total-badge.ok   { background: rgba(76,175,144,0.2); color: #4CAF90; }
+  .total-badge.over { background: rgba(192,57,43,0.2);  color: var(--red); }
+  .total-badge.under{ background: rgba(217,122,58,0.2); color: var(--warn); }
+
+  .options-list {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .option-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .opt-name {
+    flex: 1;
+    min-width: 0;
+    background: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--cream);
+    font-size: 16px;
+    padding: 11px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: inherit;
+  }
+  .opt-name::placeholder { color: var(--muted); }
+  .opt-name:focus { border-color: var(--gold); }
+
+  .pct-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+    transition: border-color 0.2s;
+  }
+  .pct-wrap:focus-within { border-color: var(--gold); }
+
+  .opt-pct {
+    width: 52px;
+    background: transparent;
+    border: none;
+    color: var(--cream);
+    font-size: 16px;
+    padding: 11px 4px 11px 10px;
+    text-align: right;
+    outline: none;
+    font-family: inherit;
+    -moz-appearance: textfield;
+  }
+  .opt-pct::-webkit-inner-spin-button,
+  .opt-pct::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+  .pct-symbol {
+    font-size: 14px;
+    color: var(--muted);
+    padding-right: 10px;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .remove-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 20px;
+    cursor: pointer;
+    padding: 4px 2px;
+    line-height: 1;
+    transition: color 0.2s;
+    flex-shrink: 0;
+  }
+  .remove-btn:hover { color: var(--red); }
+
+  .add-btn {
+    width: 100%;
+    background: none;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    color: var(--gold);
+    font-size: 14px;
+    font-weight: 500;
+    padding: 12px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    font-family: inherit;
+  }
+  .add-btn:hover { border-color: var(--gold); background: rgba(201,168,76,0.06); }
+
+  /* HISTORY */
+  .history-wrap { width: 100%; }
+  .clear-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+    padding: 0;
+    letter-spacing: 0.05em;
+    transition: color 0.2s;
+  }
+  .clear-btn:hover { color: var(--red); }
+
+  .history-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    animation: fadeIn 0.25s ease;
+  }
+  .h-swatch { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .h-winner { font-weight: 600; flex: 1; }
+  .h-pct    { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+
+  .actual-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    min-width: 52px;
+  }
+  .actual-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+  .actual-val {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gold-lt);
+    text-align: center;
+  }
+  .actual-val.no-data {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 400;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="app-id">AppADay &middot; 053</span>
+  <a class="portfolio-link" href="https://augustineiacopelli.github.io/appaday/" target="_blank">&larr; Portfolio</a>
+</header>
+
+<main>
+  <h1>The Decider</h1>
+
+  <div class="wheel-wrap">
+    <div class="wheel-pointer"></div>
+    <canvas id="wheelCanvas"></canvas>
+    <button class="spin-btn" id="spinBtn" title="Spin" disabled>&#9654;</button>
+  </div>
+
+  <div class="warn-bar" id="warnBar"></div>
+
+  <div class="result-box" id="resultBox">
+    <span class="result-empty">Spin to decide</span>
+  </div>
+
+  <div class="section-row">
+    <span class="section-title">Options &amp; Odds</span>
+    <span class="total-badge under" id="totalBadge">0%</span>
+  </div>
+
+  <div class="options-list" id="optionsList"></div>
+  <button class="add-btn" id="addBtn">+ Add option</button>
+
+  <div class="history-wrap" id="historyWrap" style="display:none">
+    <div class="section-row">
+      <span class="section-title">History</span>
+      <button class="clear-btn" id="clearBtn">Clear</button>
+    </div>
+    <div class="history-list" id="historyList"></div>
+  </div>
+</main>
+
+<script>
+  const COLORS = [
+    '#C9A84C','#4CAF90','#5B8DD9','#D95B5B','#9B6DD9',
+    '#D97A3A','#4CBECC','#D94CA8','#7AC94C','#8D6E63',
+    '#6C8EAD','#E8A838','#5E8C61','#B05C8A','#4A90D9'
+  ];
+
+  let options  = [];
+  let history  = [];
+  let spinning = false;
+  let currentAngle = 0;
+
+  const canvas      = document.getElementById('wheelCanvas');
+  const ctx         = canvas.getContext('2d');
+  const spinBtn     = document.getElementById('spinBtn');
+  const addBtn      = document.getElementById('addBtn');
+  const clearBtn    = document.getElementById('clearBtn');
+  const resultBox   = document.getElementById('resultBox');
+  const optsList    = document.getElementById('optionsList');
+  const historyWrap = document.getElementById('historyWrap');
+  const historyList = document.getElementById('historyList');
+  const warnBar     = document.getElementById('warnBar');
+  const totalBadge  = document.getElementById('totalBadge');
+
+  // -- Init --
+  function init() {
+    addOption('Option A', 50);
+    addOption('Option B', 50);
+    resizeCanvas();
+    drawWheel(currentAngle);
+    updateStatus();
+  }
+
+  function resizeCanvas() {
+    const size = canvas.parentElement.offsetWidth;
+    canvas.width  = size * devicePixelRatio;
+    canvas.height = size * devicePixelRatio;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+  }
+
+  window.addEventListener('resize', () => { resizeCanvas(); drawWheel(currentAngle); });
+
+  // -- Options --
+  function addOption(name, pct) {
+    const id    = Date.now() + Math.random();
+    const color = COLORS[options.length % COLORS.length];
+    options.push({ id, name: name || '', pct: pct !== undefined ? pct : 0, color });
+    renderOptions();
+    updateStatus();
+    drawWheel(currentAngle);
+  }
+
+  function removeOption(id) {
+    if (options.length <= 2) return;
+    options = options.filter(o => o.id !== id);
+    renderOptions();
+    updateStatus();
+    drawWheel(currentAngle);
+  }
+
+  function getActualPct(optId) {
+    if (history.length === 0) return null;
+    var wins = history.filter(function(h) { return h.winner.id === optId; }).length;
+    return Math.round((wins / history.length) * 100);
+  }
+
+  function renderOptions() {
+    optsList.innerHTML = '';
+    options.forEach((opt, i) => {
+      const actual = getActualPct(opt.id);
+      const actualHtml = actual === null
+        ? '<span class="actual-val no-data">--</span>'
+        : '<span class="actual-val">' + actual + '%</span>';
+      const row = document.createElement('div');
+      row.className = 'option-row';
+      row.innerHTML =
+        '<span class="swatch" style="background:' + opt.color + '"></span>' +
+        '<input class="opt-name" type="text" value="' + escAttr(opt.name) + '"' +
+          ' placeholder="Option ' + (i + 1) + '" maxlength="40"' +
+          ' data-id="' + opt.id + '" data-field="name">' +
+        '<div class="pct-wrap">' +
+          '<input class="opt-pct" type="number" value="' + opt.pct + '"' +
+            ' min="0" max="100" step="1"' +
+            ' data-id="' + opt.id + '" data-field="pct">' +
+          '<span class="pct-symbol">%</span>' +
+        '</div>' +
+        '<div class="actual-wrap">' +
+          '<span class="actual-label">actual</span>' +
+          actualHtml +
+        '</div>' +
+        (options.length > 2
+          ? '<button class="remove-btn" data-id="' + opt.id + '" title="Remove">&times;</button>'
+          : '<span style="width:26px"></span>');
+      optsList.appendChild(row);
+    });
+  }
+
+  optsList.addEventListener('input', function(e) {
+    const id    = parseFloat(e.target.dataset.id);
+    const field = e.target.dataset.field;
+    if (!field) return;
+    const opt = options.find(function(o) { return o.id === id; });
+    if (!opt) return;
+    if (field === 'name') {
+      opt.name = e.target.value;
+    } else if (field === 'pct') {
+      var v = parseInt(e.target.value, 10);
+      if (isNaN(v) || v < 0) v = 0;
+      if (v > 100) v = 100;
+      opt.pct = v;
+    }
+    updateStatus();
+    drawWheel(currentAngle);
+  });
+
+  optsList.addEventListener('click', function(e) {
+    var btn = e.target.closest('.remove-btn');
+    if (btn) removeOption(parseFloat(btn.dataset.id));
+  });
+
+  addBtn.addEventListener('click', function() { addOption('', 0); });
+
+  // -- Status: total, warning, spin lock --
+  function getTotal() {
+    return options.reduce(function(s, o) { return s + (Number(o.pct) || 0); }, 0);
+  }
+
+  function updateStatus() {
+    var total = getTotal();
+    var ready = total === 100 && options.filter(function(o) { return o.pct > 0; }).length >= 2;
+
+    // Badge
+    totalBadge.textContent = total + '%';
+    totalBadge.className   = 'total-badge ' + (total === 100 ? 'ok' : total > 100 ? 'over' : 'under');
+
+    // Warning
+    if (total === 100) {
+      warnBar.classList.remove('visible');
+      warnBar.innerHTML = '';
+    } else if (total > 100) {
+      warnBar.classList.add('visible');
+      warnBar.innerHTML = 'Odds add up to <strong>' + total + '%</strong> &mdash; reduce them by <strong>' + (total - 100) + '%</strong> to spin.';
+    } else {
+      warnBar.classList.add('visible');
+      warnBar.innerHTML = 'Odds add up to <strong>' + total + '%</strong> &mdash; add <strong>' + (100 - total) + '%</strong> more to spin.';
+    }
+
+    spinBtn.disabled = !ready || spinning;
+  }
+
+  // -- Drawing --
+  function drawWheel(startAngle) {
+    var size = canvas.width / devicePixelRatio;
+    var cx   = size / 2;
+    var cy   = size / 2;
+    var r    = size / 2 - 4;
+
+    ctx.clearRect(0, 0, size, size);
+
+    var valid = options.filter(function(o) { return Number(o.pct) > 0; });
+    var total = valid.reduce(function(s, o) { return s + Number(o.pct); }, 0);
+
+    if (valid.length === 0 || total === 0) {
+      ctx.fillStyle = '#3A2E1E';
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#C9A84C';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      return;
+    }
+
+    var angle = startAngle - Math.PI / 2;
+
+    valid.forEach(function(opt) {
+      var slice = (Number(opt.pct) / total) * Math.PI * 2;
+
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, angle, angle + slice);
+      ctx.closePath();
+      ctx.fillStyle = opt.color;
+      ctx.fill();
+      ctx.strokeStyle = '#1A1612';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      var mid    = angle + slice / 2;
+      var labelR = r * 0.66;
+      var lx     = cx + Math.cos(mid) * labelR;
+      var ly     = cy + Math.sin(mid) * labelR;
+
+      ctx.save();
+      ctx.translate(lx, ly);
+      ctx.rotate(mid + Math.PI / 2);
+
+      var label = (opt.name.trim() || '?');
+      var maxW  = r * 0.52;
+      var fs    = Math.max(9, Math.min(14, (slice * r * 0.42) / Math.max(label.length, 1) * 1.8));
+
+      ctx.fillStyle    = '#fff';
+      ctx.font         = '600 ' + fs + 'px Inter, sans-serif';
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor  = 'rgba(0,0,0,0.6)';
+      ctx.shadowBlur   = 3;
+
+      var txt = label;
+      while (ctx.measureText(txt).width > maxW && txt.length > 1) {
+        txt = txt.slice(0, -1);
+      }
+      if (txt !== label) txt = txt.slice(0, -1) + '...';
+
+      ctx.fillText(txt, 0, 0);
+      ctx.restore();
+
+      angle += slice;
+    });
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = '#C9A84C';
+    ctx.lineWidth   = 4;
+    ctx.stroke();
+  }
+
+  // -- Spin --
+  spinBtn.addEventListener('click', spin);
+
+  function spin() {
+    if (spinning || getTotal() !== 100) return;
+    var valid = options.filter(function(o) { return Number(o.pct) > 0; });
+    if (valid.length < 2) return;
+
+    spinning = true;
+    spinBtn.disabled = true;
+
+    var total = valid.reduce(function(s, o) { return s + Number(o.pct); }, 0);
+    var rand  = Math.random() * total;
+    var winner = valid[valid.length - 1];
+    for (var i = 0; i < valid.length; i++) {
+      rand -= Number(valid[i].pct);
+      if (rand <= 0) { winner = valid[i]; break; }
+    }
+
+    // Find segment center angle of winner (relative to top = 0)
+    var cumAngle = 0;
+    for (var j = 0; j < valid.length; j++) {
+      var slice = (Number(valid[j].pct) / total) * Math.PI * 2;
+      if (valid[j].id === winner.id) {
+        var segCenter   = cumAngle + slice / 2;
+        var neededExtra = ((Math.PI * 2 - segCenter) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+        var spins       = 5 + Math.floor(Math.random() * 3);
+        var from        = currentAngle;
+        var normalised  = ((from % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+        var target      = from + (Math.PI * 2 - normalised + neededExtra) % (Math.PI * 2) + spins * Math.PI * 2;
+
+        animateSpin(from, target, 3500, function() {
+          currentAngle = target % (Math.PI * 2);
+          drawWheel(currentAngle);
+          showResult(winner);
+          spinning = false;
+          updateStatus();
+        });
+        return;
+      }
+      cumAngle += slice;
+    }
+  }
+
+  function animateSpin(from, to, duration, onDone) {
+    var start = performance.now();
+    function frame(now) {
+      var t     = Math.min((now - start) / duration, 1);
+      var ease  = 1 - Math.pow(1 - t, 4);
+      var angle = from + (to - from) * ease;
+      drawWheel(angle);
+      if (t < 1) { requestAnimationFrame(frame); } else { onDone(); }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // -- Result & History --
+  function showResult(winner) {
+    resultBox.innerHTML =
+      '<div>' +
+        '<div class="result-label">The Decider chose...</div>' +
+        '<div class="result-winner" style="color:' + winner.color + '">' + escHtml(winner.name || '?') + '</div>' +
+      '</div>';
+    resultBox.classList.add('has-result');
+
+    history.unshift({ winner: winner, pct: winner.pct });
+    renderHistory();
+    renderOptions();
+  }
+
+  function renderHistory() {
+    if (history.length === 0) { historyWrap.style.display = 'none'; return; }
+    historyWrap.style.display = 'block';
+    historyList.innerHTML = history.map(function(h) {
+      return '<div class="history-item">' +
+        '<span class="h-swatch" style="background:' + h.winner.color + '"></span>' +
+        '<span class="h-winner" style="color:' + h.winner.color + '">' + escHtml(h.winner.name || '?') + '</span>' +
+        '<span class="h-pct">' + h.pct + '% odds</span>' +
+        '</div>';
+    }).join('');
+  }
+
+  clearBtn.addEventListener('click', function() { history = []; renderHistory(); renderOptions(); });
+
+  // -- Utils --
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function escAttr(s) {
+    return String(s).replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  init();
+</script>
+</body>
+</html>
